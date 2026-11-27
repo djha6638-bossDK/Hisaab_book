@@ -834,15 +834,16 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildCreditCardPanel(BuildContext context) {
     final summary = _creditCardSummary;
+    final double due = summary != null && summary.outstanding > 0
+        ? summary.outstanding
+        : 0;
     final String subtitle;
     if (!_creditCardSummaryLoaded) {
       subtitle = 'Hisaab load ho raha hai...';
     } else if (summary == null || !summary.hasEntries) {
       subtitle = 'Abhi koi kharch ya payment nahi';
-    } else if (summary.isSettled) {
-      subtitle = 'Sab clear — koi baki nahi';
     } else {
-      subtitle = 'Baki due ${formatIndianCurrency(summary.outstanding)}';
+      subtitle = 'Total spend ${formatIndianCurrency(summary.totalSpend)}';
     }
     return AppSurface(
       padding: EdgeInsets.zero,
@@ -905,7 +906,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: <Widget>[
                       Text(
-                        'TOTAL SPEND',
+                        'BAKI DUE',
                         style: Theme.of(context).textTheme.labelSmall?.copyWith(
                           color: Colors.white.withValues(alpha: 0.65),
                           fontWeight: FontWeight.w700,
@@ -917,9 +918,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         fit: BoxFit.scaleDown,
                         alignment: Alignment.centerRight,
                         child: Text(
-                          summary == null
-                              ? '—'
-                              : formatIndianCurrency(summary.totalSpend),
+                          summary == null ? '—' : formatIndianCurrency(due),
                           style: Theme.of(context).textTheme.titleSmall
                               ?.copyWith(
                                 color: Colors.white,

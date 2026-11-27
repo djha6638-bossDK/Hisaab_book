@@ -1949,15 +1949,17 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Credit Card'), findsOneWidget);
-    expect(find.text('TOTAL SPEND'), findsOneWidget);
-    expect(find.text('₹5,555.00'), findsOneWidget);
-    expect(find.text('Baki due ₹1,555.00'), findsOneWidget);
+    expect(find.text('BAKI DUE'), findsOneWidget);
+    expect(find.text('₹1,555.00'), findsOneWidget);
+    expect(find.text('Total spend ₹5,555.00'), findsOneWidget);
 
     await tester.tap(panel);
     await tester.pumpAndSettle();
 
     expect(find.text('Kharch aur payment'), findsOneWidget);
     expect(find.text('Mobile'), findsOneWidget);
+    expect(find.text('Baki due'), findsOneWidget);
+    expect(find.text('Total spend'), findsOneWidget);
     expect(find.text('₹1,555.00'), findsOneWidget);
     await auth.dispose();
   });
@@ -2016,6 +2018,8 @@ void main() {
     expect(entries, hasLength(2));
     expect(entries.first.type, CreditCardEntryType.payment);
     expect(find.text('Card bill'), findsOneWidget);
+    expect(find.text('Baki due'), findsOneWidget);
+    expect(find.text('Total spend'), findsOneWidget);
     expect(find.text('₹1,555.00'), findsOneWidget);
     expect(find.text('Sab clear'), findsNothing);
   });

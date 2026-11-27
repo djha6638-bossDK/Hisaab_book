@@ -377,7 +377,7 @@ class _SummaryCard extends StatelessWidget {
                             ),
                             const SizedBox(height: 2),
                             Text(
-                              'Total spend',
+                              'Baki due',
                               style: Theme.of(context).textTheme.bodySmall
                                   ?.copyWith(
                                     color: Colors.white.withValues(alpha: 0.8),
@@ -423,7 +423,7 @@ class _SummaryCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 18),
                   Text(
-                    formatIndianCurrency(summary.totalSpend),
+                    formatIndianCurrency(due),
                     style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                       color: Colors.white,
                       fontWeight: FontWeight.w800,
@@ -462,8 +462,8 @@ class _SummaryCard extends StatelessWidget {
                       Expanded(
                         child: _SummaryStat(
                           icon: Icons.receipt_long_outlined,
-                          label: 'Baki due',
-                          value: formatIndianCurrency(due),
+                          label: 'Total spend',
+                          value: formatIndianCurrency(summary.totalSpend),
                         ),
                       ),
                     ],

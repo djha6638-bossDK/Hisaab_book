@@ -24,23 +24,124 @@ function Fail([string]$Message) {
     exit 1
 }
 
-function Run([string]$Command) {
+function RunAllowingFailure([string]$Command) {
     Write-Host "> $Command" -ForegroundColor Cyan
-    # Native tools (Flutter/Gradle) stderr par warning likhte hain. Warning ko
+    # Native tools (Flutter/Gradle/gh) stderr par warning likhte hain. Warning ko
     # terminating error banne se rokna zaroori hai, warna script build ke baad
     # ruk jata hai. Asli failure $LASTEXITCODE se check hoti hai.
     $previousErrorAction = $ErrorActionPreference
     $ErrorActionPreference = "Continue"
     try {
-        Invoke-Expression $Command
-        $exitCode = $LASTEXITCODE
+        Invoke-Expression "$Command 2>&1" | Out-Host
+        return $LASTEXITCODE
     }
     finally {
         $ErrorActionPreference = $previousErrorAction
     }
+}
+
+function Run([string]$Command) {
+    $exitCode = RunAllowingFailure $Command
     if ($exitCode -ne 0) {
         Fail "Command fail hua: $Command"
     }
+}
+
+function Publish-ReleaseChunked {
+    param(
+        [string]$Tag,
+        [string]$Title,
+        [string]$AssetName,
+        [string]$AssetApk,
+        [string]$ChecksumPath,
+        [string]$NotesPath,
+        [string]$ExpectedHash
+    )
+
+    Write-Host "Direct upload fail hua. Chunk fallback chalu..." -ForegroundColor Yellow
+
+    gh release view $Tag 2>$null | Out-Null
+    if ($LASTEXITCODE -ne 0) {
+        Run "gh release create $Tag --title `"$Title`" --notes-file `"$NotesPath`""
+    }
+
+    Run "gh release upload $Tag `"$ChecksumPath`" --clobber"
+
+    $chunkDir = Join-Path (Split-Path -Parent $AssetApk) "chunks-$Tag"
+    if (Test-Path $chunkDir) {
+        Remove-Item -Path $chunkDir -Recurse -Force
+    }
+    New-Item -ItemType Directory -Path $chunkDir -Force | Out-Null
+
+    $bytes = [System.IO.File]::ReadAllBytes($AssetApk)
+    $chunkSize = 1000000
+    $chunkIndex = 0
+    for ($offset = 0; $offset -lt $bytes.Length; $offset += $chunkSize) {
+        $length = [Math]::Min($chunkSize, $bytes.Length - $offset)
+        $chunk = New-Object byte[] $length
+        [Array]::Copy($bytes, $offset, $chunk, 0, $length)
+        $chunkName = "$AssetName.part-{0:D4}" -f $chunkIndex
+        [System.IO.File]::WriteAllBytes(
+            (Join-Path $chunkDir $chunkName),
+            $chunk
+        )
+        $chunkIndex++
+    }
+
+    $parts = Get-ChildItem -Path $chunkDir -File | Sort-Object Name
+    Write-Host "APK ke $($parts.Count) chunks ban gaye." -ForegroundColor Cyan
+
+    # Bade uploads kuch networks par TLS reset ho jate hain. 7 chunks ke batch
+    # aur 30 sec gap se GitHub ka rate limit bhi nahi lagta.
+    $batchSize = 7
+    for ($start = 0; $start -lt $parts.Count; $start += $batchSize) {
+        $end = [Math]::Min($start + $batchSize - 1, $parts.Count - 1)
+        for ($i = $start; $i -le $end; $i++) {
+            $part = $parts[$i]
+            $uploaded = $false
+            for ($attempt = 1; $attempt -le 5; $attempt++) {
+                $code = RunAllowingFailure "gh release upload $Tag `"$($part.FullName)`" --clobber"
+                if ($code -eq 0) {
+                    $uploaded = $true
+                    break
+                }
+                Start-Sleep -Seconds 8
+            }
+            if (-not $uploaded) {
+                Fail "Chunk upload fail hua: $($part.Name)"
+            }
+        }
+        Write-Host "Chunks upload: $($end + 1)/$($parts.Count)" -ForegroundColor Cyan
+        if ($end -lt $parts.Count - 1) {
+            Start-Sleep -Seconds 30
+        }
+    }
+
+    Run "gh workflow run assemble-release-apk.yml -f tag=`"$Tag`" -f asset_name=`"$AssetName`""
+    Start-Sleep -Seconds 8
+    $run = gh run list --workflow assemble-release-apk.yml --limit 1 --json databaseId,status | ConvertFrom-Json | Select-Object -First 1
+    if (-not $run -or -not $run.databaseId) {
+        Fail "GitHub Actions run nahi mila."
+    }
+    Write-Host "GitHub Actions run: $($run.databaseId)" -ForegroundColor Cyan
+    Run "gh run watch $($run.databaseId) --exit-status"
+
+    $release = gh release view $Tag --json url,assets | ConvertFrom-Json
+    $apkAsset = $release.assets |
+        Where-Object { $_.name -eq $AssetName } |
+        Select-Object -First 1
+    if (-not $apkAsset) {
+        Fail "Workflow ke baad APK asset nahi mila."
+    }
+    if ($apkAsset.digest -ne "sha256:$ExpectedHash") {
+        Fail "Uploaded APK ka checksum match nahi hua."
+    }
+    $partsLeft = ($release.assets |
+        Where-Object { $_.name -like "*.apk.part-*" }).Count
+    if ($partsLeft -gt 0) {
+        Write-Host "Warning: $partsLeft temporary chunk assets abhi bhi hain." -ForegroundColor Yellow
+    }
+    return $release.url
 }
 
 $root = Split-Path -Parent $PSScriptRoot
@@ -166,8 +267,20 @@ if (-not $SkipPush) {
     Run "git push origin HEAD"
     Run "git push origin $tag"
 
-    Run "gh release create $tag `"$assetApk`" `"$checksumPath`" --title `"Hisaab Book $newVersion`" --notes-file `"$notesPath`""
-    $releaseUrl = gh release view $tag --json url --jq .url
+    $directUploadCode = RunAllowingFailure "gh release create $tag `"$assetApk`" `"$checksumPath`" --title `"Hisaab Book $newVersion`" --notes-file `"$notesPath`""
+    if ($directUploadCode -eq 0) {
+        $releaseUrl = gh release view $tag --json url --jq .url
+    }
+    else {
+        $releaseUrl = Publish-ReleaseChunked `
+            -Tag $tag `
+            -Title "Hisaab Book $newVersion" `
+            -AssetName $assetName `
+            -AssetApk $assetApk `
+            -ChecksumPath $checksumPath `
+            -NotesPath $notesPath `
+            -ExpectedHash $hash
+    }
     Write-Host ""
     Write-Host "Release ready: $releaseUrl" -ForegroundColor Green
 }

@@ -47,6 +47,11 @@ The script:
 4. Commits the `pubspec.yaml` version bump and pushes tag `v<version>+<build>`.
 5. Creates a public GitHub Release with the APK, checksum, and notes.
 
+If a direct large upload fails because of a local network/TLS reset, the script
+automatically uploads 1 MB chunks and runs
+`.github/workflows/assemble-release-apk.yml` to join, verify, and publish the
+final APK.
+
 Keep `versionCode` (the `+N` part) strictly increasing. Android installs an
 update only when it is signed with the same key as the installed app and the
 new `versionCode` is higher.
