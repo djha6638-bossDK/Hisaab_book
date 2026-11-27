@@ -1,0 +1,59 @@
+name: Assemble release APK
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag
+        required: true
+        default: v1.2.0+4
+      asset_name:
+        description: Final APK asset name
+        required: true
+        default: hisaab-book-1.2.0+4.apk
+
+permissions:
+  contents: write
+
+jobs:
+  assemble:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      TAG: ${{ inputs.tag }}
+      ASSET_NAME: ${{ inputs.asset_name }}
+    steps:
+      - name: Download APK chunks
+        run: |
+          set -euo pipefail
+          mkdir -p chunks
+          gh release download "$TAG" --repo "$GITHUB_REPOSITORY" \
+            --pattern "*.apk.part-*" --dir chunks
+
+      - name: Join chunks and verify checksum
+        run: |
+          set -euo pipefail
+          mkdir -p assembled
+          cat chunks/*.apk.part-* > "assembled/$ASSET_NAME"
+          gh release download "$TAG" --repo "$GITHUB_REPOSITORY" \
+            --pattern "$ASSET_NAME.sha256" --dir assembled
+          expected=$(awk '{print $1}' "assembled/$ASSET_NAME.sha256")
+          actual=$(sha256sum "assembled/$ASSET_NAME" | awk '{print $1}')
+          echo "Expected: $expected"
+          echo "Actual:   $actual"
+          test "$expected" = "$actual"
+
+      - name: Upload APK to release
+        run: |
+          set -euo pipefail
+          gh release upload "$TAG" "assembled/$ASSET_NAME" \
+            --repo "$GITHUB_REPOSITORY" --clobber
+
+      - name: Remove temporary chunks
+        run: |
+          set -euo pipefail
+          for path in chunks/*; do
+            name=$(basename "$path")
+            gh release delete-asset "$TAG" "$name" \
+              --repo "$GITHUB_REPOSITORY" --yes
+          done
