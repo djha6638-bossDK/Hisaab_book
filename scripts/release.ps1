@@ -26,8 +26,19 @@ function Fail([string]$Message) {
 
 function Run([string]$Command) {
     Write-Host "> $Command" -ForegroundColor Cyan
-    Invoke-Expression $Command
-    if ($LASTEXITCODE -ne 0) {
+    # Native tools (Flutter/Gradle) stderr par warning likhte hain. Warning ko
+    # terminating error banne se rokna zaroori hai, warna script build ke baad
+    # ruk jata hai. Asli failure $LASTEXITCODE se check hoti hai.
+    $previousErrorAction = $ErrorActionPreference
+    $ErrorActionPreference = "Continue"
+    try {
+        Invoke-Expression $Command
+        $exitCode = $LASTEXITCODE
+    }
+    finally {
+        $ErrorActionPreference = $previousErrorAction
+    }
+    if ($exitCode -ne 0) {
         Fail "Command fail hua: $Command"
     }
 }
