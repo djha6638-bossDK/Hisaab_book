@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-import '../core/currency.dart';
 import '../core/month_utils.dart';
 import '../core/user_error.dart';
 import '../core/year_utils.dart';
@@ -62,9 +61,6 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _reminderPermissionsReady = false;
   AttendanceReminderTime? _reminderTime;
   AttendanceReminderTime? _lastReminderTime;
-  MonthlyRecord? _selectedRecord;
-  bool _summaryLoading = true;
-  String? _summaryError;
   bool _showAttendanceBanner = false;
   String? _attendanceCheckError;
   String _appVersion = '';
@@ -80,7 +76,6 @@ class _HomeScreenState extends State<HomeScreen> {
     _selectedMonth = now.month;
     _selectedYear = now.year;
     _loadReminderState();
-    _loadSelectedRecord();
     _loadAttendanceBanner();
     _loadAppVersion();
     _checkForUpdate();
@@ -195,33 +190,6 @@ class _HomeScreenState extends State<HomeScreen> {
         ],
       ),
     );
-  }
-
-  Future<void> _loadSelectedRecord() async {
-    setState(() {
-      _summaryLoading = true;
-      _summaryError = null;
-    });
-    try {
-      final record = await widget.repository.getMonthlyRecord(
-        _selectedYear,
-        _selectedMonth,
-      );
-      if (!mounted) return;
-      setState(() {
-        _selectedRecord = record;
-        _summaryLoading = false;
-      });
-    } catch (error) {
-      if (!mounted) return;
-      setState(() {
-        _summaryLoading = false;
-        _summaryError = friendlyError(
-          error,
-          fallback: 'Is mahine ka hisaab load nahi ho paya.',
-        );
-      });
-    }
   }
 
   Future<void> _loadAttendanceBanner() async {
@@ -640,7 +608,6 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
         );
-        if (mounted) await _loadSelectedRecord();
         return;
       }
 
@@ -674,7 +641,6 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
       );
-      if (mounted) await _loadSelectedRecord();
     } catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -816,7 +782,6 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     final years = availableYears();
     final reminderEnabled = _reminderTime != null;
-    final selectedRecord = _selectedRecord;
     return Scaffold(
       appBar: AppBar(
         title: const Row(
@@ -895,7 +860,6 @@ class _HomeScreenState extends State<HomeScreen> {
             onRefresh: () async {
               await Future.wait(<Future<void>>[
                 _loadAttendanceBanner(),
-                _loadSelectedRecord(),
                 _checkForUpdate(force: true),
               ]);
             },
@@ -934,182 +898,6 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   const SizedBox(height: 16),
                 ],
-                if (_showAttendanceBanner) ...<Widget>[
-                  AppSurface(
-                    key: const ValueKey<String>('today-attendance-banner'),
-                    color: const Color(0xfffff7ed),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: <Widget>[
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: <Widget>[
-                            const Icon(
-                              Icons.pending_actions_outlined,
-                              color: Color(0xff9a5b00),
-                            ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: <Widget>[
-                                  Text(
-                                    'Aaj ki attendance baaki hai',
-                                    style: Theme.of(
-                                      context,
-                                    ).textTheme.titleMedium,
-                                  ),
-                                  const SizedBox(height: 3),
-                                  Text(
-                                    'Tuition aur doodh ka hisaab aaj tak nahi '
-                                    'bhara. Abhi bhar do.',
-                                    style: Theme.of(
-                                      context,
-                                    ).textTheme.bodyMedium,
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 12),
-                        LayoutBuilder(
-                          builder: (context, constraints) {
-                            final compact = constraints.maxWidth < 420;
-                            final fillButton = FilledButton.icon(
-                              key: const ValueKey<String>(
-                                'today-attendance-button',
-                              ),
-                              onPressed: _openTodayAttendance,
-                              icon: const Icon(Icons.fact_check_outlined),
-                              label: const Text('Attendance bharo'),
-                            );
-                            final skipButton = OutlinedButton(
-                              key: const ValueKey<String>(
-                                'skip-today-attendance',
-                              ),
-                              onPressed: _skipTodayAttendance,
-                              child: const Text('Aaj skip karo'),
-                            );
-                            if (compact) {
-                              return Column(
-                                crossAxisAlignment: CrossAxisAlignment.stretch,
-                                children: <Widget>[
-                                  fillButton,
-                                  const SizedBox(height: 8),
-                                  skipButton,
-                                ],
-                              );
-                            }
-                            return Row(
-                              children: <Widget>[
-                                Expanded(child: fillButton),
-                                const SizedBox(width: 10),
-                                Expanded(child: skipButton),
-                              ],
-                            );
-                          },
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                ],
-                if (_attendanceCheckError != null) ...<Widget>[
-                  AppSurface(
-                    color: const Color(0xfffff7ed),
-                    child: Row(
-                      children: <Widget>[
-                        const Icon(Icons.cloud_off_outlined, size: 20),
-                        const SizedBox(width: 10),
-                        Expanded(child: Text(_attendanceCheckError!)),
-                        TextButton(
-                          onPressed: _loadAttendanceBanner,
-                          child: const Text('Phir try karo'),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                ],
-                AppSurface(
-                  padding: const EdgeInsets.all(20),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: <Widget>[
-                      AppSectionHeader(
-                        title: '${monthName(_selectedMonth)} $_selectedYear',
-                        subtitle: 'Is mahine ka income, kharch aur bachat.',
-                      ),
-                      const SizedBox(height: 14),
-                      if (_summaryLoading)
-                        const Padding(
-                          padding: EdgeInsets.symmetric(vertical: 18),
-                          child: Center(child: CircularProgressIndicator()),
-                        )
-                      else if (_summaryError != null)
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: <Widget>[
-                            Text(
-                              _summaryError!,
-                              style: TextStyle(
-                                color: Theme.of(context).colorScheme.error,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            OutlinedButton.icon(
-                              onPressed: _loadSelectedRecord,
-                              icon: const Icon(Icons.refresh),
-                              label: const Text('Phir try karo'),
-                            ),
-                          ],
-                        )
-                      else if (selectedRecord == null)
-                        Text(
-                          'Is mahine ka record abhi nahi bana. Neeche se '
-                          '"Mahina kholo" dabao.',
-                          style: Theme.of(context).textTheme.bodyMedium,
-                        )
-                      else
-                        Row(
-                          children: <Widget>[
-                            Expanded(
-                              child: _HomeMetric(
-                                label: 'Income',
-                                value: selectedRecord.totalIncome,
-                                color: const Color(0xff176b3a),
-                              ),
-                            ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: _HomeMetric(
-                                label: 'Kharch',
-                                value: selectedRecord.totalExpenses,
-                                color: const Color(0xffb75c12),
-                              ),
-                            ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: _HomeMetric(
-                                label: 'Bachat',
-                                value:
-                                    selectedRecord.totalIncome -
-                                    selectedRecord.totalExpenses,
-                                color:
-                                    selectedRecord.totalIncome -
-                                            selectedRecord.totalExpenses <
-                                        0
-                                    ? Theme.of(context).colorScheme.error
-                                    : const Color(0xff176b3a),
-                              ),
-                            ),
-                          ],
-                        ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 16),
                 AppSurface(
                   padding: const EdgeInsets.all(20),
                   child: Column(
@@ -1143,7 +931,6 @@ class _HomeScreenState extends State<HomeScreen> {
                                 : (value) {
                                     if (value == null) return;
                                     setState(() => _selectedMonth = value);
-                                    _loadSelectedRecord();
                                   },
                           );
                           final yearField = DropdownButtonFormField<int>(
@@ -1165,7 +952,6 @@ class _HomeScreenState extends State<HomeScreen> {
                                 : (value) {
                                     if (value == null) return;
                                     setState(() => _selectedYear = value);
-                                    _loadSelectedRecord();
                                   },
                           );
                           if (compact) {
@@ -1299,57 +1085,107 @@ class _HomeScreenState extends State<HomeScreen> {
                     ],
                   ),
                 ),
+                const SizedBox(height: 16),
+                if (_attendanceCheckError != null) ...<Widget>[
+                  AppSurface(
+                    color: const Color(0xfffff7ed),
+                    child: Row(
+                      children: <Widget>[
+                        const Icon(Icons.cloud_off_outlined, size: 20),
+                        const SizedBox(width: 10),
+                        Expanded(child: Text(_attendanceCheckError!)),
+                        TextButton(
+                          onPressed: _loadAttendanceBanner,
+                          child: const Text('Phir try karo'),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                ],
+                if (_showAttendanceBanner)
+                  AppSurface(
+                    key: const ValueKey<String>('today-attendance-banner'),
+                    color: const Color(0xfffff7ed),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: <Widget>[
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: <Widget>[
+                            const Icon(
+                              Icons.pending_actions_outlined,
+                              color: Color(0xff9a5b00),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: <Widget>[
+                                  Text(
+                                    'Aaj ki attendance baaki hai',
+                                    style: Theme.of(
+                                      context,
+                                    ).textTheme.titleMedium,
+                                  ),
+                                  const SizedBox(height: 3),
+                                  Text(
+                                    'Tuition aur doodh ka hisaab aaj tak nahi '
+                                    'bhara. Abhi bhar do.',
+                                    style: Theme.of(
+                                      context,
+                                    ).textTheme.bodyMedium,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        LayoutBuilder(
+                          builder: (context, constraints) {
+                            final compact = constraints.maxWidth < 420;
+                            final fillButton = FilledButton.icon(
+                              key: const ValueKey<String>(
+                                'today-attendance-button',
+                              ),
+                              onPressed: _openTodayAttendance,
+                              icon: const Icon(Icons.fact_check_outlined),
+                              label: const Text('Attendance bharo'),
+                            );
+                            final skipButton = OutlinedButton(
+                              key: const ValueKey<String>(
+                                'skip-today-attendance',
+                              ),
+                              onPressed: _skipTodayAttendance,
+                              child: const Text('Aaj skip karo'),
+                            );
+                            if (compact) {
+                              return Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: <Widget>[
+                                  fillButton,
+                                  const SizedBox(height: 8),
+                                  skipButton,
+                                ],
+                              );
+                            }
+                            return Row(
+                              children: <Widget>[
+                                Expanded(child: fillButton),
+                                const SizedBox(width: 10),
+                                Expanded(child: skipButton),
+                              ],
+                            );
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
               ],
             ),
           ),
         ),
-      ),
-    );
-  }
-}
-
-class _HomeMetric extends StatelessWidget {
-  const _HomeMetric({
-    required this.label,
-    required this.value,
-    required this.color,
-  });
-
-  final String label;
-  final double value;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: color.withValues(alpha: 0.18)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          Text(
-            label,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: Theme.of(context).textTheme.labelMedium,
-          ),
-          const SizedBox(height: 3),
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            alignment: Alignment.centerLeft,
-            child: Text(
-              formatIndianCurrency(value),
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                color: color,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-          ),
-        ],
       ),
     );
   }

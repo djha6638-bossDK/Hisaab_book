@@ -131,6 +131,15 @@ void main() {
     await tester.pumpAndSettle();
   }
 
+  Future<void> scrollToAttendanceBanner(WidgetTester tester) async {
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey<String>('today-attendance-banner')),
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+  }
+
   AppUpdateInfo updateFixture() => AppUpdateInfo(
     versionName: '1.1.1',
     buildNumber: 3,
@@ -254,6 +263,7 @@ void main() {
       );
 
       expect(find.text('Hisaab Book'), findsOneWidget);
+      await scrollToAttendanceBanner(tester);
       expect(
         find.byKey(const ValueKey<String>('today-attendance-banner')),
         findsOneWidget,
@@ -307,6 +317,7 @@ void main() {
       promptStore: promptStore,
     );
 
+    await scrollToAttendanceBanner(tester);
     expect(find.text('Aaj ki attendance baaki hai'), findsOneWidget);
     await tester.tap(
       find.byKey(const ValueKey<String>('skip-today-attendance')),
@@ -359,6 +370,7 @@ void main() {
     );
     await pumpApp(tester, auth: auth, repository: repository);
 
+    await scrollToAttendanceBanner(tester);
     await tester.tap(
       find.byKey(const ValueKey<String>('today-attendance-button')),
     );
