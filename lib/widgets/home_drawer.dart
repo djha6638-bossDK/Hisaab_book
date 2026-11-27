@@ -5,7 +5,6 @@ class HomeDrawer extends StatelessWidget {
     required this.displayName,
     required this.onOpenSavedRecords,
     required this.onOpenRecurringExpenses,
-    required this.onOpenDailyServices,
     required this.onOpenPaymentPeople,
     super.key,
   });
@@ -13,7 +12,6 @@ class HomeDrawer extends StatelessWidget {
   final String displayName;
   final VoidCallback onOpenSavedRecords;
   final VoidCallback onOpenRecurringExpenses;
-  final VoidCallback onOpenDailyServices;
   final VoidCallback onOpenPaymentPeople;
 
   @override
@@ -79,13 +77,6 @@ class HomeDrawer extends StatelessWidget {
               label: 'Recurring kharch',
               subtitle: 'Har mahine ke fixed kharch',
               onTap: onOpenRecurringExpenses,
-            ),
-            _DrawerItem(
-              key: const ValueKey<String>('drawer-daily-services'),
-              icon: Icons.fact_check_outlined,
-              label: 'Tuition & Milk',
-              subtitle: 'Daily attendance aur amount',
-              onTap: onOpenDailyServices,
             ),
             _DrawerItem(
               key: const ValueKey<String>('drawer-payment-people'),

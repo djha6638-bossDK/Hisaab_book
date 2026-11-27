@@ -1113,10 +1113,6 @@ void main() {
 
     expect(find.text('Purane record'), findsOneWidget);
     expect(find.text('Recurring kharch'), findsOneWidget);
-    expect(
-      find.byKey(const ValueKey<String>('drawer-daily-services')),
-      findsOneWidget,
-    );
     expect(find.text('Payment log'), findsOneWidget);
     expect(find.text('Manage'), findsNothing);
 

@@ -683,10 +683,6 @@ class _HomeScreenState extends State<HomeScreen> {
     _openDrawerPage(RecurringExpensesScreen(repository: widget.repository));
   }
 
-  void _openDailyServicesFromDrawer() {
-    _openDrawerPage(DailyServicesScreen(repository: widget.repository));
-  }
-
   void _openDailyServices() {
     _pushPage(DailyServicesScreen(repository: widget.repository));
   }
@@ -824,7 +820,6 @@ class _HomeScreenState extends State<HomeScreen> {
         displayName: widget.user.displayName,
         onOpenSavedRecords: _openSavedRecords,
         onOpenRecurringExpenses: _openRecurringExpenses,
-        onOpenDailyServices: _openDailyServicesFromDrawer,
         onOpenPaymentPeople: _openPaymentPeople,
       ),
       appBar: AppBar(
