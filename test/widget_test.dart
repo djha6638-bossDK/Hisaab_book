@@ -2023,4 +2023,76 @@ void main() {
     expect(find.text('₹1,555.00'), findsOneWidget);
     expect(find.text('Sab clear'), findsNothing);
   });
+
+  testWidgets('credit card screen shows current month and filters old months', (
+    tester,
+  ) async {
+    useTallSurface(tester);
+    final now = DateTime.now();
+    final currentMonth = DateTime(now.year, now.month, 10);
+    final previousMonth = DateTime(now.year, now.month - 1, 12);
+    final repository = MemoryLedgerRepository(
+      creditCardEntries: <CreditCardEntry>[
+        CreditCardEntry(
+          id: 'spend-current',
+          type: CreditCardEntryType.spend,
+          amount: 1000,
+          description: 'Aaj ka kharch',
+          date: currentMonth,
+          createdAt: DateTime(now.year, now.month, 10, 10),
+        ),
+        CreditCardEntry(
+          id: 'spend-previous',
+          type: CreditCardEntryType.spend,
+          amount: 300,
+          description: 'Purana kharch',
+          date: previousMonth,
+          createdAt: DateTime(previousMonth.year, previousMonth.month, 12, 10),
+        ),
+        CreditCardEntry(
+          id: 'payment-previous',
+          type: CreditCardEntryType.payment,
+          amount: 200,
+          description: 'Purana payment',
+          date: previousMonth,
+          createdAt: DateTime(previousMonth.year, previousMonth.month, 12, 11),
+        ),
+      ],
+    );
+    await tester.pumpWidget(
+      MaterialApp(home: CreditCardScreen(repository: repository)),
+    );
+    await tester.pumpAndSettle();
+
+    final spendButton = find.byKey(
+      const ValueKey<String>('credit-card-add-spend'),
+    );
+    final paymentButton = find.byKey(
+      const ValueKey<String>('credit-card-add-payment'),
+    );
+    expect(
+      tester.getCenter(spendButton).dy,
+      tester.getCenter(paymentButton).dy,
+    );
+    expect(find.text('${monthName(now.month)} ${now.year}'), findsOneWidget);
+    expect(find.text('Aaj ka kharch'), findsOneWidget);
+    expect(find.text('Purana kharch'), findsNothing);
+    expect(find.text('₹1,300.00'), findsOneWidget);
+    expect(find.text('₹1,100.00'), findsOneWidget);
+
+    await tester.tap(
+      find.byKey(const ValueKey<String>('credit-card-prev-month')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text('${monthName(previousMonth.month)} ${previousMonth.year}'),
+      findsOneWidget,
+    );
+    expect(find.text('Aaj ka kharch'), findsNothing);
+    expect(find.text('Purana kharch'), findsOneWidget);
+    expect(find.text('Purana payment'), findsOneWidget);
+    expect(find.text('₹1,300.00'), findsOneWidget);
+    expect(find.text('₹1,100.00'), findsOneWidget);
+  });
 }

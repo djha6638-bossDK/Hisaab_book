@@ -22,11 +22,46 @@ class _CreditCardScreenState extends State<CreditCardScreen> {
   bool _busy = false;
   String? _error;
   List<CreditCardEntry> _entries = <CreditCardEntry>[];
+  late int _selectedMonth;
+  late int _selectedYear;
 
   @override
   void initState() {
     super.initState();
+    final now = DateTime.now();
+    _selectedMonth = now.month;
+    _selectedYear = now.year;
     _load();
+  }
+
+  List<CreditCardEntry> get _monthEntries => _entries
+      .where(
+        (entry) =>
+            entry.date.year == _selectedYear &&
+            entry.date.month == _selectedMonth,
+      )
+      .toList(growable: false);
+
+  void _shiftMonth(int delta) {
+    final target = DateTime(_selectedYear, _selectedMonth + delta);
+    setState(() {
+      _selectedYear = target.year;
+      _selectedMonth = target.month;
+    });
+  }
+
+  Future<void> _pickMonth() async {
+    final picked = await showModalBottomSheet<({int year, int month})>(
+      context: context,
+      showDragHandle: true,
+      builder: (_) =>
+          _MonthPickerSheet(month: _selectedMonth, year: _selectedYear),
+    );
+    if (picked == null || !mounted) return;
+    setState(() {
+      _selectedYear = picked.year;
+      _selectedMonth = picked.month;
+    });
   }
 
   Future<void> _load({bool showLoader = true}) async {
@@ -61,12 +96,20 @@ class _CreditCardScreenState extends State<CreditCardScreen> {
     CreditCardEntryType type = CreditCardEntryType.spend,
   }) async {
     if (_busy) return;
+    final now = DateTime.now();
+    final lastDayOfMonth = DateTime(_selectedYear, _selectedMonth + 1, 0).day;
+    final defaultDate = DateTime(
+      _selectedYear,
+      _selectedMonth,
+      now.day > lastDayOfMonth ? lastDayOfMonth : now.day,
+    );
     final result = await showDialog<CreditCardEntry>(
       context: context,
       barrierDismissible: false,
       builder: (_) => _CreditCardEntryDialog(
         existing: existing,
         type: existing?.type ?? type,
+        defaultDate: defaultDate,
       ),
     );
     if (result == null || !mounted) return;
@@ -137,6 +180,8 @@ class _CreditCardScreenState extends State<CreditCardScreen> {
   @override
   Widget build(BuildContext context) {
     final summary = CreditCardSummary.fromEntries(_entries);
+    final monthEntries = _monthEntries;
+    final monthLabel = '${monthName(_selectedMonth)} $_selectedYear';
     return Scaffold(
       appBar: AppBar(title: const Text('Credit Card')),
       body: _loading
@@ -162,56 +207,72 @@ class _CreditCardScreenState extends State<CreditCardScreen> {
                     physics: const AlwaysScrollableScrollPhysics(),
                     children: <Widget>[
                       _SummaryCard(summary: summary),
-                      const SizedBox(height: 16),
-                      LayoutBuilder(
-                        builder: (context, constraints) {
-                          final addSpend = FilledButton.icon(
-                            key: const ValueKey<String>(
-                              'credit-card-add-spend',
+                      const SizedBox(height: 14),
+                      Row(
+                        children: <Widget>[
+                          Expanded(
+                            child: FilledButton.icon(
+                              key: const ValueKey<String>(
+                                'credit-card-add-spend',
+                              ),
+                              style: FilledButton.styleFrom(
+                                minimumSize: const Size(0, 44),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 10,
+                                ),
+                              ),
+                              onPressed: _busy ? null : _edit,
+                              icon: const Icon(Icons.add, size: 20),
+                              label: const FittedBox(
+                                fit: BoxFit.scaleDown,
+                                child: Text('Naya kharch'),
+                              ),
                             ),
-                            onPressed: _busy ? null : _edit,
-                            icon: const Icon(Icons.add),
-                            label: const Text('Naya kharch'),
-                          );
-                          final addPayment = OutlinedButton.icon(
-                            key: const ValueKey<String>(
-                              'credit-card-add-payment',
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              key: const ValueKey<String>(
+                                'credit-card-add-payment',
+                              ),
+                              style: OutlinedButton.styleFrom(
+                                minimumSize: const Size(0, 44),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 10,
+                                ),
+                              ),
+                              onPressed: _busy
+                                  ? null
+                                  : () => _edit(
+                                      type: CreditCardEntryType.payment,
+                                    ),
+                              icon: const Icon(
+                                Icons.account_balance_wallet_outlined,
+                                size: 20,
+                              ),
+                              label: const FittedBox(
+                                fit: BoxFit.scaleDown,
+                                child: Text('Payment jama'),
+                              ),
                             ),
-                            onPressed: _busy
-                                ? null
-                                : () =>
-                                      _edit(type: CreditCardEntryType.payment),
-                            icon: const Icon(
-                              Icons.account_balance_wallet_outlined,
-                            ),
-                            label: const Text('Payment jama'),
-                          );
-                          if (constraints.maxWidth < 430) {
-                            return Column(
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                              children: <Widget>[
-                                addSpend,
-                                const SizedBox(height: 10),
-                                addPayment,
-                              ],
-                            );
-                          }
-                          return Row(
-                            children: <Widget>[
-                              Expanded(child: addSpend),
-                              const SizedBox(width: 10),
-                              Expanded(child: addPayment),
-                            ],
-                          );
-                        },
+                          ),
+                        ],
                       ),
-                      const SizedBox(height: 24),
+                      const SizedBox(height: 12),
+                      _MonthSwitcher(
+                        month: _selectedMonth,
+                        year: _selectedYear,
+                        onPrevious: () => _shiftMonth(-1),
+                        onNext: () => _shiftMonth(1),
+                        onTap: _pickMonth,
+                      ),
+                      const SizedBox(height: 18),
                       AppSectionHeader(
                         title: 'Kharch aur payment',
-                        subtitle: _entries.isEmpty
-                            ? 'Har entry date ke saath yahan dikhegi.'
-                            : 'Latest entry sabse upar hai.',
-                        trailing: _entries.isEmpty
+                        subtitle: monthEntries.isEmpty
+                            ? '$monthLabel me koi entry nahi.'
+                            : '$monthLabel ki entries — latest sabse upar.',
+                        trailing: monthEntries.isEmpty
                             ? null
                             : Container(
                                 padding: const EdgeInsets.symmetric(
@@ -225,7 +286,7 @@ class _CreditCardScreenState extends State<CreditCardScreen> {
                                   borderRadius: BorderRadius.circular(999),
                                 ),
                                 child: Text(
-                                  '${_entries.length}',
+                                  '${monthEntries.length}',
                                   style: Theme.of(context).textTheme.labelLarge
                                       ?.copyWith(
                                         color: Theme.of(
@@ -237,30 +298,34 @@ class _CreditCardScreenState extends State<CreditCardScreen> {
                               ),
                       ),
                       const SizedBox(height: 14),
-                      if (_entries.isEmpty)
+                      if (monthEntries.isEmpty)
                         AppSurface(
                           color: const Color(0xfff8faf9),
                           child: Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 22),
+                            padding: const EdgeInsets.symmetric(vertical: 18),
                             child: Column(
                               children: <Widget>[
                                 Icon(
                                   Icons.credit_card_off_outlined,
-                                  size: 38,
+                                  size: 34,
                                   color: Theme.of(
                                     context,
                                   ).colorScheme.onSurfaceVariant,
                                 ),
-                                const SizedBox(height: 12),
+                                const SizedBox(height: 10),
                                 Text(
-                                  'Abhi koi entry nahi',
+                                  _entries.isEmpty
+                                      ? 'Abhi koi entry nahi'
+                                      : 'Is mahine koi entry nahi',
                                   style: Theme.of(
                                     context,
                                   ).textTheme.titleMedium,
                                 ),
                                 const SizedBox(height: 4),
                                 Text(
-                                  'Pehla kharch ya card payment add karo.',
+                                  _entries.isEmpty
+                                      ? 'Pehla kharch ya card payment add karo.'
+                                      : 'Doosra mahina chuno ya nayi entry add karo.',
                                   textAlign: TextAlign.center,
                                   style: Theme.of(context).textTheme.bodyMedium,
                                 ),
@@ -269,9 +334,9 @@ class _CreditCardScreenState extends State<CreditCardScreen> {
                           ),
                         )
                       else
-                        for (final entry in _entries)
+                        for (final entry in monthEntries)
                           Padding(
-                            padding: const EdgeInsets.only(bottom: 10),
+                            padding: const EdgeInsets.only(bottom: 8),
                             child: _EntryTile(
                               entry: entry,
                               enabled: !_busy,
@@ -528,6 +593,191 @@ class _SummaryStat extends StatelessWidget {
   }
 }
 
+class _MonthSwitcher extends StatelessWidget {
+  const _MonthSwitcher({
+    required this.month,
+    required this.year,
+    required this.onPrevious,
+    required this.onNext,
+    required this.onTap,
+  });
+
+  final int month;
+  final int year;
+  final VoidCallback onPrevious;
+  final VoidCallback onNext;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return AppSurface(
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+      child: Row(
+        children: <Widget>[
+          IconButton(
+            key: const ValueKey<String>('credit-card-prev-month'),
+            tooltip: 'Pichla mahina',
+            visualDensity: VisualDensity.compact,
+            onPressed: onPrevious,
+            icon: const Icon(Icons.chevron_left),
+          ),
+          Expanded(
+            child: InkWell(
+              key: const ValueKey<String>('credit-card-month-picker'),
+              borderRadius: BorderRadius.circular(999),
+              onTap: onTap,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: <Widget>[
+                    Icon(Icons.event_outlined, size: 16, color: scheme.primary),
+                    const SizedBox(width: 6),
+                    Flexible(
+                      child: Text(
+                        '${monthName(month)} $year',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 2),
+                    Icon(
+                      Icons.expand_more,
+                      size: 18,
+                      color: scheme.onSurfaceVariant,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          IconButton(
+            key: const ValueKey<String>('credit-card-next-month'),
+            tooltip: 'Agla mahina',
+            visualDensity: VisualDensity.compact,
+            onPressed: onNext,
+            icon: const Icon(Icons.chevron_right),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MonthPickerSheet extends StatefulWidget {
+  const _MonthPickerSheet({required this.month, required this.year});
+
+  final int month;
+  final int year;
+
+  @override
+  State<_MonthPickerSheet> createState() => _MonthPickerSheetState();
+}
+
+class _MonthPickerSheetState extends State<_MonthPickerSheet> {
+  late int _year = widget.year;
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            Row(
+              children: <Widget>[
+                IconButton(
+                  tooltip: 'Pichla saal',
+                  onPressed: () => setState(() => _year--),
+                  icon: const Icon(Icons.chevron_left),
+                ),
+                Expanded(
+                  child: Text(
+                    '$_year',
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+                IconButton(
+                  tooltip: 'Agla saal',
+                  onPressed: () => setState(() => _year++),
+                  icon: const Icon(Icons.chevron_right),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            GridView.count(
+              crossAxisCount: 3,
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              mainAxisSpacing: 8,
+              crossAxisSpacing: 8,
+              childAspectRatio: 2.6,
+              children: <Widget>[
+                for (var month = 1; month <= 12; month++)
+                  _MonthChip(
+                    month: month,
+                    selected: month == widget.month && _year == widget.year,
+                    onTap: () =>
+                        Navigator.pop(context, (year: _year, month: month)),
+                  ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _MonthChip extends StatelessWidget {
+  const _MonthChip({
+    required this.month,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final int month;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Material(
+      color: selected ? scheme.primary : scheme.surface,
+      borderRadius: BorderRadius.circular(10),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(10),
+        onTap: onTap,
+        child: Container(
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(
+              color: selected ? Colors.transparent : scheme.outline,
+            ),
+          ),
+          child: Text(
+            monthName(month),
+            style: Theme.of(context).textTheme.labelLarge?.copyWith(
+              color: selected ? scheme.onPrimary : scheme.onSurface,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 enum _EntryAction { edit, delete }
 
 class _EntryTile extends StatelessWidget {
@@ -551,72 +801,100 @@ class _EntryTile extends StatelessWidget {
     final amount =
         '${entry.isPayment ? '-' : ''}'
         '${formatIndianCurrency(entry.amount)}';
+    final theme = Theme.of(context);
     return AppSurface(
       padding: EdgeInsets.zero,
-      child: ListTile(
-        contentPadding: const EdgeInsets.fromLTRB(14, 6, 4, 6),
-        leading: Container(
-          width: 42,
-          height: 42,
-          decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: Icon(
-            entry.isPayment
-                ? Icons.check_circle_outline
-                : Icons.shopping_bag_outlined,
-            color: color,
-            size: 22,
-          ),
-        ),
-        title: Text(
-          entry.displayDescription,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: const TextStyle(fontWeight: FontWeight.w600),
-        ),
-        subtitle: Text(
-          '${entry.date.day} ${monthName(entry.date.month)} '
-          '${entry.date.year} · ${entry.isPayment ? 'Payment' : 'Kharch'}',
-        ),
-        trailing: Row(
-          mainAxisSize: MainAxisSize.min,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(10, 7, 2, 7),
+        child: Row(
           children: <Widget>[
+            Container(
+              width: 34,
+              height: 34,
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(9),
+              ),
+              child: Icon(
+                entry.isPayment
+                    ? Icons.check_circle_outline
+                    : Icons.shopping_bag_outlined,
+                color: color,
+                size: 18,
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: <Widget>[
+                  Text(
+                    entry.displayDescription,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 1),
+                  Text(
+                    '${entry.date.day} ${monthName(entry.date.month)} '
+                    '${entry.date.year} · '
+                    '${entry.isPayment ? 'Payment' : 'Kharch'}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      fontSize: 11.5,
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
             Text(
               amount,
-              style: TextStyle(color: color, fontWeight: FontWeight.w700),
+              style: theme.textTheme.titleSmall?.copyWith(
+                color: color,
+                fontWeight: FontWeight.w700,
+              ),
             ),
-            PopupMenuButton<_EntryAction>(
-              enabled: enabled,
-              tooltip: 'Entry options',
-              icon: const Icon(Icons.more_vert, size: 20),
-              onSelected: (action) {
-                switch (action) {
-                  case _EntryAction.edit:
-                    onEdit();
-                  case _EntryAction.delete:
-                    onDelete();
-                }
-              },
-              itemBuilder: (context) => const <PopupMenuEntry<_EntryAction>>[
-                PopupMenuItem<_EntryAction>(
-                  value: _EntryAction.edit,
-                  child: ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    leading: Icon(Icons.edit_outlined),
-                    title: Text('Edit karo'),
+            SizedBox(
+              width: 34,
+              height: 34,
+              child: PopupMenuButton<_EntryAction>(
+                enabled: enabled,
+                tooltip: 'Entry options',
+                padding: EdgeInsets.zero,
+                icon: const Icon(Icons.more_vert, size: 20),
+                onSelected: (action) {
+                  switch (action) {
+                    case _EntryAction.edit:
+                      onEdit();
+                    case _EntryAction.delete:
+                      onDelete();
+                  }
+                },
+                itemBuilder: (context) => const <PopupMenuEntry<_EntryAction>>[
+                  PopupMenuItem<_EntryAction>(
+                    value: _EntryAction.edit,
+                    child: ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: Icon(Icons.edit_outlined),
+                      title: Text('Edit karo'),
+                    ),
                   ),
-                ),
-                PopupMenuItem<_EntryAction>(
-                  value: _EntryAction.delete,
-                  child: ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    leading: Icon(Icons.delete_outline),
-                    title: Text('Delete karo'),
+                  PopupMenuItem<_EntryAction>(
+                    value: _EntryAction.delete,
+                    child: ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: Icon(Icons.delete_outline),
+                      title: Text('Delete karo'),
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ],
         ),
@@ -626,10 +904,15 @@ class _EntryTile extends StatelessWidget {
 }
 
 class _CreditCardEntryDialog extends StatefulWidget {
-  const _CreditCardEntryDialog({required this.existing, required this.type});
+  const _CreditCardEntryDialog({
+    required this.existing,
+    required this.type,
+    required this.defaultDate,
+  });
 
   final CreditCardEntry? existing;
   final CreditCardEntryType type;
+  final DateTime defaultDate;
 
   @override
   State<_CreditCardEntryDialog> createState() => _CreditCardEntryDialogState();
@@ -653,8 +936,7 @@ class _CreditCardEntryDialogState extends State<_CreditCardEntryDialog> {
       text: existing == null ? '' : existing.amount.toStringAsFixed(2),
     );
     _description = TextEditingController(text: existing?.description ?? '');
-    final now = DateTime.now();
-    _date = existing?.date ?? DateTime(now.year, now.month, now.day);
+    _date = existing?.date ?? widget.defaultDate;
   }
 
   @override
