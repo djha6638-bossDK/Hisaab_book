@@ -1,0 +1,40 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedInAs(userId) {
+      return request.auth != null && request.auth.uid == userId;
+    }
+
+    match /users/{userId} {
+      allow read, create, update: if signedInAs(userId);
+      allow delete: if false;
+
+      match /monthlyRecords/{recordId} {
+        allow read, write: if signedInAs(userId);
+      }
+
+      match /recurringExpenses/{expenseId} {
+        allow read, write: if signedInAs(userId);
+      }
+
+      match /paymentPeople/{personId} {
+        allow read, write: if signedInAs(userId);
+      }
+
+      match /settings/{settingId} {
+        allow read, write: if signedInAs(userId);
+      }
+
+      match /dailyServiceAttendance/{attendanceId} {
+        allow read, write: if signedInAs(userId);
+      }
+
+      // Legacy records remain read-only while the app migrates them.
+      match /expenses/{recordId} {
+        allow read: if signedInAs(userId);
+        allow write: if false;
+      }
+    }
+  }
+}
