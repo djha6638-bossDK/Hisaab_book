@@ -13,7 +13,8 @@ param(
     [int]$Build = 0,
     [string]$Notes = "",
     [switch]$SkipTests,
-    [switch]$SkipPush
+    [switch]$SkipPush,
+    [switch]$DryRun
 )
 
 $ErrorActionPreference = "Stop"
@@ -39,20 +40,22 @@ if (-not (Test-Path (Join-Path $root ".git"))) {
 }
 
 $dirty = git status --porcelain
-if ($dirty) {
+if ($dirty -and -not $DryRun) {
     Write-Host "Working tree me changes hain:" -ForegroundColor Yellow
     $dirty | ForEach-Object { Write-Host "  $_" }
     Fail "Release se pehle working tree clean rakho."
 }
 
-$remote = git remote get-url origin 2>$null
-if (-not $remote) {
-    Fail "Git remote 'origin' set nahi hai."
-}
+if (-not $DryRun) {
+    $remote = git remote get-url origin 2>$null
+    if (-not $remote) {
+        Fail "Git remote 'origin' set nahi hai."
+    }
 
-$ghAuth = gh auth status 2>&1
-if ($LASTEXITCODE -ne 0) {
-    Fail "GitHub CLI login nahi hai. 'gh auth login' chalao."
+    $ghAuth = gh auth status 2>&1
+    if ($LASTEXITCODE -ne 0) {
+        Fail "GitHub CLI login nahi hai. 'gh auth login' chalao."
+    }
 }
 
 $pubspecPath = Join-Path $root "pubspec.yaml"
@@ -106,6 +109,11 @@ if ([string]::IsNullOrWhiteSpace($Notes)) {
 
 Write-Host "Release: $newVersion+$newBuild ($tag)" -ForegroundColor Green
 Write-Host "Purana version: $oldMajor.$oldMinor.$oldPatch+$oldBuild"
+
+if ($DryRun) {
+    Write-Host "Dry run: kuch bhi modify/build/push nahi hua." -ForegroundColor Yellow
+    exit 0
+}
 
 $updatedPubspec = [regex]::Replace(
     $pubspec,
