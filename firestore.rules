@@ -34,6 +34,10 @@ service cloud.firestore {
         allow read, write: if signedInAs(userId);
       }
 
+      match /creditCardEntries/{entryId} {
+        allow read, write: if signedInAs(userId);
+      }
+
       // Legacy records remain read-only while the app migrates them.
       match /expenses/{recordId} {
         allow read: if signedInAs(userId);

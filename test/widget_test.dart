@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:hisaab_book/app.dart';
 import 'package:hisaab_book/core/currency.dart';
 import 'package:hisaab_book/core/month_utils.dart';
+import 'package:hisaab_book/models/credit_card_entry.dart';
 import 'package:hisaab_book/models/daily_service_attendance.dart';
 import 'package:hisaab_book/models/daily_service_settings.dart';
 import 'package:hisaab_book/models/expense_entry.dart';
@@ -11,6 +12,7 @@ import 'package:hisaab_book/models/monthly_record.dart';
 import 'package:hisaab_book/models/payment_person.dart';
 import 'package:hisaab_book/models/recurring_expense.dart';
 import 'package:hisaab_book/repositories/memory_ledger_repository.dart';
+import 'package:hisaab_book/screens/credit_card_screen.dart';
 import 'package:hisaab_book/screens/daily_attendance_screen.dart';
 import 'package:hisaab_book/screens/daily_service_settings_screen.dart';
 import 'package:hisaab_book/screens/daily_services_screen.dart';
@@ -604,77 +606,78 @@ void main() {
     );
   });
 
-  testWidgets('daily services shows pending tuition off days on missing dates', (
-    tester,
-  ) async {
-    useTallSurface(tester);
-    final repository = MemoryLedgerRepository(
-      initialDailyServiceSettings: const DailyServiceSettings(
-        monthlyTuitionFee: 2600,
-        milkRatePerKg: 60,
-        defaultMilkQuantityKg: 1.5,
-        tuitionOffWeekday: DateTime.monday,
-      ),
-    );
-    await tester.pumpWidget(
-      MaterialApp(home: DailyServicesScreen(repository: repository)),
-    );
-    await tester.pumpAndSettle();
-    await selectDailyServicesMonth(tester, 2026, 8);
+  testWidgets(
+    'daily services shows pending tuition off days on missing dates',
+    (tester) async {
+      useTallSurface(tester);
+      final repository = MemoryLedgerRepository(
+        initialDailyServiceSettings: const DailyServiceSettings(
+          monthlyTuitionFee: 2600,
+          milkRatePerKg: 60,
+          defaultMilkQuantityKg: 1.5,
+          tuitionOffWeekday: DateTime.monday,
+        ),
+      );
+      await tester.pumpWidget(
+        MaterialApp(home: DailyServicesScreen(repository: repository)),
+      );
+      await tester.pumpAndSettle();
+      await selectDailyServicesMonth(tester, 2026, 8);
 
-    final defaultDay = find.byKey(
-      const ValueKey<String>('daily-service-2026-08-03'),
-    );
-    await tester.scrollUntilVisible(
-      defaultDay,
-      300,
-      scrollable: find.byType(Scrollable).first,
-    );
-    expect(defaultDay, findsOneWidget);
-    expect(
-      find.descendant(
-        of: defaultDay,
-        matching: find.text('Tuition chhutti - pending'),
-      ),
-      findsOneWidget,
-    );
-    expect(
-      find.descendant(of: defaultDay, matching: find.text('Doodh pending')),
-      findsOneWidget,
-    );
+      final defaultDay = find.byKey(
+        const ValueKey<String>('daily-service-2026-08-03'),
+      );
+      await tester.scrollUntilVisible(
+        defaultDay,
+        300,
+        scrollable: find.byType(Scrollable).first,
+      );
+      expect(defaultDay, findsOneWidget);
+      expect(
+        find.descendant(
+          of: defaultDay,
+          matching: find.text('Tuition chhutti - pending'),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(of: defaultDay, matching: find.text('Doodh pending')),
+        findsOneWidget,
+      );
 
-    await tester.tap(defaultDay);
-    await tester.pumpAndSettle();
-    expect(
-      find.byKey(const ValueKey<String>('tuition-present-button')),
-      findsOneWidget,
-    );
-    expect(
-      find.byKey(const ValueKey<String>('tuition-off-button')),
-      findsOneWidget,
-    );
-    expect(find.text('Tuition: Chhutti'), findsOneWidget);
+      await tester.tap(defaultDay);
+      await tester.pumpAndSettle();
+      expect(
+        find.byKey(const ValueKey<String>('tuition-present-button')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const ValueKey<String>('tuition-off-button')),
+        findsOneWidget,
+      );
+      expect(find.text('Tuition: Chhutti'), findsOneWidget);
 
-    await tester.tap(
-      find.byKey(const ValueKey<String>('tuition-present-button')),
-    );
-    await tester.pump();
-    await tester.tap(find.text('Attendance save karo'));
-    await tester.pumpAndSettle();
-    expect(
-      find.byKey(const ValueKey<String>('extra-tuition-confirmation')),
-      findsOneWidget,
-    );
-    await tester.tap(
-      find.byKey(const ValueKey<String>('confirm-extra-tuition')),
-    );
-    await tester.pumpAndSettle();
+      await tester.tap(
+        find.byKey(const ValueKey<String>('tuition-present-button')),
+      );
+      await tester.pump();
+      await tester.tap(find.text('Attendance save karo'));
+      await tester.pumpAndSettle();
+      expect(
+        find.byKey(const ValueKey<String>('extra-tuition-confirmation')),
+        findsOneWidget,
+      );
+      await tester.tap(
+        find.byKey(const ValueKey<String>('confirm-extra-tuition')),
+      );
+      await tester.pumpAndSettle();
 
-    final saved = await repository.getDailyServiceAttendance(
-      DateTime(2026, 8, 3),
-    );
-    expect(saved?.tuitionPresent, isTrue);
-  });
+      final saved = await repository.getDailyServiceAttendance(
+        DateTime(2026, 8, 3),
+      );
+      expect(saved?.tuitionPresent, isTrue);
+    },
+  );
 
   testWidgets('saved tuition off day is shown as off instead of absent', (
     tester,
@@ -1035,9 +1038,7 @@ void main() {
     expect(find.textContaining('1.1.1'), findsWidgets);
     expect(find.text('Update card aur bug fixes.'), findsOneWidget);
 
-    await tester.tap(
-      find.byKey(const ValueKey<String>('update-later-button')),
-    );
+    await tester.tap(find.byKey(const ValueKey<String>('update-later-button')));
     await tester.pumpAndSettle();
 
     expect(card, findsNothing);
@@ -1102,11 +1103,7 @@ void main() {
     final auth = MemoryAuthService(
       initialUser: const AuthUser(id: 'u1', displayName: 'Dhiraj'),
     );
-    await pumpApp(
-      tester,
-      auth: auth,
-      repository: MemoryLedgerRepository(),
-    );
+    await pumpApp(tester, auth: auth, repository: MemoryLedgerRepository());
 
     await tester.tap(find.byIcon(Icons.menu));
     await tester.pumpAndSettle();
@@ -1197,9 +1194,7 @@ void main() {
       await tester.tap(reminderButton);
       await tester.pumpAndSettle();
       expect(find.text('Attendance reminder'), findsOneWidget);
-      await tester.tap(
-        find.byKey(const ValueKey<String>('reminder-toggle')),
-      );
+      await tester.tap(find.byKey(const ValueKey<String>('reminder-toggle')));
       await tester.pumpAndSettle();
 
       expect(reminderService.permissionRequestCount, 1);
@@ -1251,10 +1246,7 @@ void main() {
     await tester.longPress(reminderButton);
     await tester.pumpAndSettle();
 
-    expect(
-      find.text('Attendance reminder ka time chuno'),
-      findsOneWidget,
-    );
+    expect(find.text('Attendance reminder ka time chuno'), findsOneWidget);
     await tester.tap(find.text('OK'));
     await tester.pumpAndSettle();
 
@@ -1371,11 +1363,7 @@ void main() {
         email: 'dhiraj@example.com',
       ),
     );
-    await pumpApp(
-      tester,
-      auth: auth,
-      repository: MemoryLedgerRepository(),
-    );
+    await pumpApp(tester, auth: auth, repository: MemoryLedgerRepository());
 
     await tester.tap(find.byTooltip('Logout'));
     await tester.pumpAndSettle();
@@ -1400,11 +1388,7 @@ void main() {
     tester,
   ) async {
     final auth = MemoryAuthService()..signInError = StateError('offline');
-    await pumpApp(
-      tester,
-      auth: auth,
-      repository: MemoryLedgerRepository(),
-    );
+    await pumpApp(tester, auth: auth, repository: MemoryLedgerRepository());
 
     await tester.tap(find.text('Google se aage badho'));
     await tester.pumpAndSettle();
@@ -1457,7 +1441,10 @@ void main() {
     expect(find.text('Mahina save karo'), findsOneWidget);
     expect(find.text('Income'), findsWidgets);
     expect(find.text('Kharch'), findsWidgets);
-    expect(find.text('Bachat = ${formatIndianCurrency(38000)}'), findsOneWidget);
+    expect(
+      find.text('Bachat = ${formatIndianCurrency(38000)}'),
+      findsOneWidget,
+    );
     expect(find.text('Income source'), findsNothing);
     expect(find.text('Income jodo'), findsNothing);
     await tester.drag(find.byType(ListView), const Offset(0, -500));
@@ -1579,10 +1566,7 @@ void main() {
 
     expect(find.text(formatIndianCurrency(40)), findsOneWidget);
     expect(find.text(formatIndianCurrency(-35)), findsOneWidget);
-    expect(
-      find.text('Bachat = ${formatIndianCurrency(-35)}'),
-      findsOneWidget,
-    );
+    expect(find.text('Bachat = ${formatIndianCurrency(-35)}'), findsOneWidget);
   });
 
   testWidgets('keeps add expense button fixed while the page scrolls', (
@@ -1919,7 +1903,120 @@ void main() {
     await tester.tap(find.byTooltip('Tuition & Milk settings'));
     await tester.pumpAndSettle();
 
-    expect(find.textContaining('Purane mahine ka rate lock hai'), findsOneWidget);
+    expect(
+      find.textContaining('Purane mahine ka rate lock hai'),
+      findsOneWidget,
+    );
     expect(find.text('Tuition & Milk settings'), findsNothing);
+  });
+
+  testWidgets('home credit card panel shows total spend and due', (
+    tester,
+  ) async {
+    useTallSurface(tester);
+    final date = today();
+    final auth = MemoryAuthService(
+      initialUser: const AuthUser(id: 'u1', displayName: 'Dhiraj'),
+    );
+    final repository = MemoryLedgerRepository(
+      creditCardEntries: <CreditCardEntry>[
+        CreditCardEntry(
+          id: 'spend-1',
+          type: CreditCardEntryType.spend,
+          amount: 5555,
+          description: 'Mobile',
+          date: date,
+          createdAt: DateTime(2026, 11, 27, 10),
+        ),
+        CreditCardEntry(
+          id: 'payment-1',
+          type: CreditCardEntryType.payment,
+          amount: 4000,
+          description: 'Card payment',
+          date: date,
+          createdAt: DateTime(2026, 11, 27, 11),
+        ),
+      ],
+    );
+    await pumpApp(tester, auth: auth, repository: repository);
+
+    final panel = find.byKey(const ValueKey<String>('home-credit-card'));
+    await tester.scrollUntilVisible(
+      panel,
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Credit Card'), findsOneWidget);
+    expect(find.text('TOTAL SPEND'), findsOneWidget);
+    expect(find.text('₹5,555.00'), findsOneWidget);
+    expect(find.text('Baki due ₹1,555.00'), findsOneWidget);
+
+    await tester.tap(panel);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Kharch aur payment'), findsOneWidget);
+    expect(find.text('Mobile'), findsOneWidget);
+    expect(find.text('₹1,555.00'), findsOneWidget);
+    await auth.dispose();
+  });
+
+  testWidgets('credit card screen saves spend and payment entries', (
+    tester,
+  ) async {
+    useTallSurface(tester);
+    final repository = MemoryLedgerRepository();
+    await tester.pumpWidget(
+      MaterialApp(home: CreditCardScreen(repository: repository)),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Abhi koi entry nahi'), findsOneWidget);
+
+    await tester.tap(
+      find.byKey(const ValueKey<String>('credit-card-add-spend')),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Naya kharch'), findsWidgets);
+    await tester.enterText(
+      find.byKey(const ValueKey<String>('credit-card-amount')),
+      '5555',
+    );
+    await tester.enterText(
+      find.byKey(const ValueKey<String>('credit-card-description')),
+      'Mobile',
+    );
+    await tester.tap(find.byKey(const ValueKey<String>('credit-card-save')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Mobile'), findsOneWidget);
+    var entries = await repository.listCreditCardEntries();
+    expect(entries, hasLength(1));
+    expect(entries.single.type, CreditCardEntryType.spend);
+    expect(entries.single.amount, 5555);
+
+    await tester.tap(
+      find.byKey(const ValueKey<String>('credit-card-add-payment')),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Payment jama karo'), findsOneWidget);
+    await tester.enterText(
+      find.byKey(const ValueKey<String>('credit-card-amount')),
+      '4000',
+    );
+    await tester.enterText(
+      find.byKey(const ValueKey<String>('credit-card-description')),
+      'Card bill',
+    );
+    await tester.tap(find.byKey(const ValueKey<String>('credit-card-save')));
+    await tester.pumpAndSettle();
+
+    entries = await repository.listCreditCardEntries();
+    expect(entries, hasLength(2));
+    expect(entries.first.type, CreditCardEntryType.payment);
+    expect(find.text('Card bill'), findsOneWidget);
+    expect(find.text('₹1,555.00'), findsOneWidget);
+    expect(find.text('Sab clear'), findsNothing);
   });
 }

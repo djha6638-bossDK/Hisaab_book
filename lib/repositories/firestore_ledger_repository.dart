@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../core/month_utils.dart';
+import '../models/credit_card_entry.dart';
 import '../models/daily_service_attendance.dart';
 import '../models/daily_service_settings.dart';
 import '../models/monthly_record.dart';
@@ -38,6 +39,9 @@ class FirestoreLedgerRepository implements LedgerRepository {
   CollectionReference<Map<String, dynamic>> get _dailyServiceAttendance =>
       _userDocument.collection('dailyServiceAttendance');
 
+  CollectionReference<Map<String, dynamic>> get _creditCardEntries =>
+      _userDocument.collection('creditCardEntries');
+
   @override
   Future<DailyServiceAttendance?> getDailyServiceAttendance(
     DateTime date,
@@ -73,12 +77,13 @@ class FirestoreLedgerRepository implements LedgerRepository {
     int month,
     DailyServiceSettings settings,
   ) {
-    return _dailyServiceMonthSettings
-        .doc(monthlyRecordId(year, month))
-        .set(<String, Object?>{
-          ...settings.toMap(),
-          'updatedAt': FieldValue.serverTimestamp(),
-        }, SetOptions(merge: true));
+    return _dailyServiceMonthSettings.doc(monthlyRecordId(year, month)).set(
+      <String, Object?>{
+        ...settings.toMap(),
+        'updatedAt': FieldValue.serverTimestamp(),
+      },
+      SetOptions(merge: true),
+    );
   }
 
   @override
@@ -254,6 +259,49 @@ class FirestoreLedgerRepository implements LedgerRepository {
   @override
   Future<void> deleteRecurringExpense(String id) =>
       _recurringExpenses.doc(id).delete();
+
+  @override
+  Future<List<CreditCardEntry>> listCreditCardEntries() async {
+    final snapshot = await _creditCardEntries.get();
+    final entries =
+        snapshot.docs
+            .map((doc) => CreditCardEntry.fromMap(doc.id, doc.data()))
+            .toList()
+          ..sort((a, b) {
+            final dateOrder = b.date.compareTo(a.date);
+            if (dateOrder != 0) return dateOrder;
+            final aCreated =
+                a.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+            final bCreated =
+                b.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+            return bCreated.compareTo(aCreated);
+          });
+    return entries;
+  }
+
+  @override
+  Future<CreditCardEntry> saveCreditCardEntry(CreditCardEntry entry) async {
+    final reference = entry.id.isEmpty
+        ? _creditCardEntries.doc()
+        : _creditCardEntries.doc(entry.id);
+    final saved = CreditCardEntry(
+      id: reference.id,
+      type: entry.type,
+      amount: entry.amount,
+      description: entry.description.trim(),
+      date: entry.date,
+      createdAt: entry.createdAt ?? DateTime.now(),
+    );
+    await reference.set(<String, Object?>{
+      ...saved.toMap(),
+      'updatedAt': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
+    return saved;
+  }
+
+  @override
+  Future<void> deleteCreditCardEntry(String id) =>
+      _creditCardEntries.doc(id).delete();
 
   Future<void> _migrateLegacyRecord(MonthlyRecord record) async {
     final reference = _monthlyRecords.doc(record.id);

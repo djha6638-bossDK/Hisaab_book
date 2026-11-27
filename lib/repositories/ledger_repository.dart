@@ -1,3 +1,4 @@
+import '../models/credit_card_entry.dart';
 import '../models/daily_service_attendance.dart';
 import '../models/daily_service_settings.dart';
 import '../models/monthly_record.dart';
@@ -51,6 +52,12 @@ abstract class LedgerRepository {
   );
 
   Future<void> saveDailyServiceAttendance(DailyServiceAttendance attendance);
+
+  Future<List<CreditCardEntry>> listCreditCardEntries();
+
+  Future<CreditCardEntry> saveCreditCardEntry(CreditCardEntry entry);
+
+  Future<void> deleteCreditCardEntry(String id);
 }
 
 class MonthlyRecordAlreadyExistsException implements Exception {

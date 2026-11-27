@@ -1,3 +1,4 @@
+import '../models/credit_card_entry.dart';
 import '../models/daily_service_attendance.dart';
 import '../models/daily_service_settings.dart';
 import '../models/monthly_record.dart';
@@ -15,6 +16,7 @@ class MemoryLedgerRepository implements LedgerRepository {
         const <DailyServiceAttendance>[],
     Map<String, DailyServiceSettings> dailyServiceMonthSettings =
         const <String, DailyServiceSettings>{},
+    Iterable<CreditCardEntry> creditCardEntries = const <CreditCardEntry>[],
   }) : _records = {for (final record in records) record.id: record},
        _recurring = {
          for (final expense in recurringExpenses) expense.id: expense,
@@ -27,6 +29,9 @@ class MemoryLedgerRepository implements LedgerRepository {
        _dailyServiceAttendance = {
          for (final entry in dailyServiceAttendance)
            dailyAttendanceId(entry.date): entry,
+       },
+       _creditCardEntries = {
+         for (final entry in creditCardEntries) entry.id: entry,
        };
 
   final Map<String, MonthlyRecord> _records;
@@ -35,6 +40,7 @@ class MemoryLedgerRepository implements LedgerRepository {
   DailyServiceSettings? _dailyServiceSettings;
   final Map<String, DailyServiceSettings> _dailyServiceMonthSettings;
   final Map<String, DailyServiceAttendance> _dailyServiceAttendance;
+  final Map<String, CreditCardEntry> _creditCardEntries;
 
   @override
   Future<DailyServiceAttendance?> getDailyServiceAttendance(
@@ -64,8 +70,9 @@ class MemoryLedgerRepository implements LedgerRepository {
   Future<DailyServiceSettings?> getDailyServiceMonthSettings(
     int year,
     int month,
-  ) async => _dailyServiceMonthSettings['${year.toString().padLeft(4, '0')}-'
-      '${month.toString().padLeft(2, '0')}'];
+  ) async =>
+      _dailyServiceMonthSettings['${year.toString().padLeft(4, '0')}-'
+          '${month.toString().padLeft(2, '0')}'];
 
   @override
   Future<void> saveDailyServiceMonthSettings(
@@ -74,7 +81,8 @@ class MemoryLedgerRepository implements LedgerRepository {
     DailyServiceSettings settings,
   ) async {
     _dailyServiceMonthSettings['${year.toString().padLeft(4, '0')}-'
-        '${month.toString().padLeft(2, '0')}'] = settings;
+            '${month.toString().padLeft(2, '0')}'] =
+        settings;
   }
 
   @override
@@ -169,5 +177,40 @@ class MemoryLedgerRepository implements LedgerRepository {
       assignedPersonId: expense.assignedPersonId,
       assignedPersonName: expense.assignedPersonName,
     );
+  }
+
+  @override
+  Future<List<CreditCardEntry>> listCreditCardEntries() async {
+    final values = _creditCardEntries.values.toList()
+      ..sort((a, b) {
+        final dateOrder = b.date.compareTo(a.date);
+        if (dateOrder != 0) return dateOrder;
+        final aCreated = a.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+        final bCreated = b.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+        return bCreated.compareTo(aCreated);
+      });
+    return values;
+  }
+
+  @override
+  Future<CreditCardEntry> saveCreditCardEntry(CreditCardEntry entry) async {
+    final id = entry.id.isEmpty
+        ? 'credit-${DateTime.now().microsecondsSinceEpoch}'
+        : entry.id;
+    final saved = CreditCardEntry(
+      id: id,
+      type: entry.type,
+      amount: entry.amount,
+      description: entry.description,
+      date: entry.date,
+      createdAt: entry.createdAt ?? DateTime.now(),
+    );
+    _creditCardEntries[id] = saved;
+    return saved;
+  }
+
+  @override
+  Future<void> deleteCreditCardEntry(String id) async {
+    _creditCardEntries.remove(id);
   }
 }

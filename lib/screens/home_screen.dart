@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../core/currency.dart';
 import '../core/month_utils.dart';
 import '../core/user_error.dart';
 import '../core/year_utils.dart';
+import '../domain/credit_card_logic.dart';
 import '../domain/monthly_record_logic.dart';
 import '../models/monthly_record.dart';
 import '../repositories/ledger_repository.dart';
@@ -16,6 +18,7 @@ import '../services/pdf_report_service.dart';
 import '../widgets/app_shell.dart';
 import '../widgets/app_update_card.dart';
 import '../widgets/home_drawer.dart';
+import 'credit_card_screen.dart';
 import 'daily_attendance_screen.dart';
 import 'daily_services_screen.dart';
 import 'income_setup_dialog.dart';
@@ -69,6 +72,8 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _updateDownloading = false;
   double _updateProgress = 0;
   bool _updateCheckInFlight = false;
+  bool _creditCardSummaryLoaded = false;
+  CreditCardSummary? _creditCardSummary;
 
   @override
   void initState() {
@@ -80,6 +85,7 @@ class _HomeScreenState extends State<HomeScreen> {
     _loadAttendanceBanner();
     _loadAppVersion();
     _checkForUpdate();
+    _loadCreditCardSummary();
   }
 
   Future<void> _loadAppVersion() async {
@@ -96,9 +102,7 @@ class _HomeScreenState extends State<HomeScreen> {
     if (_updateCheckInFlight) return;
     _updateCheckInFlight = true;
     try {
-      final update = await widget.appUpdateService.checkForUpdate(
-        force: force,
-      );
+      final update = await widget.appUpdateService.checkForUpdate(force: force);
       if (!mounted) return;
       setState(() => _availableUpdate = update);
     } catch (_) {
@@ -253,7 +257,10 @@ class _HomeScreenState extends State<HomeScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            friendlyError(error, fallback: 'Skip save nahi hua. Phir koshish karo.'),
+            friendlyError(
+              error,
+              fallback: 'Skip save nahi hua. Phir koshish karo.',
+            ),
           ),
         ),
       );
@@ -272,9 +279,7 @@ class _HomeScreenState extends State<HomeScreen> {
       if (!mounted) return;
       if (settings == null) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Pehle Tuition & Milk settings bharo.'),
-          ),
+          const SnackBar(content: Text('Pehle Tuition & Milk settings bharo.')),
         );
         return;
       }
@@ -462,9 +467,7 @@ class _HomeScreenState extends State<HomeScreen> {
       ).format(context);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(
-            'Attendance reminder $formattedTime par on ho gaya.',
-          ),
+          content: Text('Attendance reminder $formattedTime par on ho gaya.'),
         ),
       );
     } catch (error) {
@@ -660,9 +663,9 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _pushPage(Widget page) {
-    Navigator.of(context).push<void>(
-      MaterialPageRoute<void>(builder: (_) => page),
-    );
+    Navigator.of(
+      context,
+    ).push<void>(MaterialPageRoute<void>(builder: (_) => page));
   }
 
   void _openDrawerPage(Widget page) {
@@ -685,6 +688,30 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _openDailyServices() {
     _pushPage(DailyServicesScreen(repository: widget.repository));
+  }
+
+  Future<void> _loadCreditCardSummary() async {
+    try {
+      final entries = await widget.repository.listCreditCardEntries();
+      if (!mounted) return;
+      setState(() {
+        _creditCardSummary = CreditCardSummary.fromEntries(entries);
+        _creditCardSummaryLoaded = true;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _creditCardSummaryLoaded = true);
+    }
+  }
+
+  Future<void> _openCreditCard() async {
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(
+        builder: (_) => CreditCardScreen(repository: widget.repository),
+      ),
+    );
+    if (!mounted) return;
+    await _loadCreditCardSummary();
   }
 
   void _openPaymentPeople() {
@@ -710,9 +737,7 @@ class _HomeScreenState extends State<HomeScreen> {
             const Text('Kya is account se sign out karna hai?'),
             const SizedBox(height: 14),
             Text(
-              widget.user.email.isEmpty
-                  ? 'Email nahi mila'
-                  : widget.user.email,
+              widget.user.email.isEmpty ? 'Email nahi mila' : widget.user.email,
               key: const ValueKey<String>('logout-account-email'),
               style: Theme.of(
                 dialogContext,
@@ -739,13 +764,9 @@ class _HomeScreenState extends State<HomeScreen> {
       await widget.authService.signOut();
     } catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(
+      ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(
-            friendlyError(error, fallback: 'Logout nahi ho paya.'),
-          ),
+          content: Text(friendlyError(error, fallback: 'Logout nahi ho paya.')),
         ),
       );
     } finally {
@@ -807,6 +828,117 @@ class _HomeScreenState extends State<HomeScreen> {
             child: const Text('Band karo'),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildCreditCardPanel(BuildContext context) {
+    final summary = _creditCardSummary;
+    final String subtitle;
+    if (!_creditCardSummaryLoaded) {
+      subtitle = 'Hisaab load ho raha hai...';
+    } else if (summary == null || !summary.hasEntries) {
+      subtitle = 'Abhi koi kharch ya payment nahi';
+    } else if (summary.isSettled) {
+      subtitle = 'Sab clear — koi baki nahi';
+    } else {
+      subtitle = 'Baki due ${formatIndianCurrency(summary.outstanding)}';
+    }
+    return AppSurface(
+      padding: EdgeInsets.zero,
+      child: Material(
+        type: MaterialType.transparency,
+        child: InkWell(
+          key: const ValueKey<String>('home-credit-card'),
+          borderRadius: BorderRadius.circular(8),
+          onTap: _openCreditCard,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: <Color>[Color(0xff10241b), Color(0xff1f6a45)],
+              ),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Row(
+              children: <Widget>[
+                Container(
+                  width: 42,
+                  height: 42,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(Icons.credit_card, color: Colors.white),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      Text(
+                        'Credit Card',
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w700,
+                            ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        subtitle,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Colors.white.withValues(alpha: 0.75),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 10),
+                SizedBox(
+                  width: 108,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: <Widget>[
+                      Text(
+                        'TOTAL SPEND',
+                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                          color: Colors.white.withValues(alpha: 0.65),
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 0.8,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerRight,
+                        child: Text(
+                          summary == null
+                              ? '—'
+                              : formatIndianCurrency(summary.totalSpend),
+                          style: Theme.of(context).textTheme.titleSmall
+                              ?.copyWith(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w700,
+                              ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 2),
+                Icon(
+                  Icons.chevron_right_rounded,
+                  color: Colors.white.withValues(alpha: 0.8),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -900,6 +1032,7 @@ class _HomeScreenState extends State<HomeScreen> {
               await Future.wait(<Future<void>>[
                 _loadAttendanceBanner(),
                 _checkForUpdate(force: true),
+                _loadCreditCardSummary(),
               ]);
             },
             child: ListView(
@@ -1067,9 +1200,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                     style: Theme.of(context)
                                         .textTheme
                                         .titleMedium
-                                        ?.copyWith(
-                                          fontWeight: FontWeight.w700,
-                                        ),
+                                        ?.copyWith(fontWeight: FontWeight.w700),
                                   ),
                                   const SizedBox(height: 2),
                                   Text(
@@ -1091,6 +1222,8 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   ),
                 ),
+                const SizedBox(height: 16),
+                _buildCreditCardPanel(context),
                 const SizedBox(height: 16),
                 if (_attendanceCheckError != null) ...<Widget>[
                   AppSurface(

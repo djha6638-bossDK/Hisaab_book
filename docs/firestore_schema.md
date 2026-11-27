@@ -49,6 +49,21 @@ An expense without assigned-person fields belongs to `Self`. Monthly records
 store both the person ID and a name snapshot so historical records remain
 readable if the reusable people list changes later.
 
+## Credit card entries
+
+`users/{uid}/creditCardEntries/{autoId}`
+
+- `type`: `spend` or `payment`
+- `amount`: positive number
+- `description`: what the money was spent on, or a payment note
+- `date`: `YYYY-MM-DD`
+- `year`, `month`, `day`: integer copies for reporting
+- `createdAt`
+- `updatedAt`
+
+Spends and payments stay independent of monthly records and income. The
+outstanding amount is calculated as total spends minus total payments.
+
 ## Existing-data migration
 
 Older releases stored records in `users/{uid}/expenses/{Month_Year}` with
