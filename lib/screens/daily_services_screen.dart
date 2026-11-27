@@ -74,7 +74,7 @@ class _DailyServicesScreenState extends State<DailyServicesScreen> {
         _loading = false;
         _error = friendlyError(
           error,
-          fallback: 'Tuition aur doodh ka data load nahi ho paya.',
+          fallback: 'Tuition & Milk ka data load nahi ho paya.',
         );
       });
     }
@@ -134,10 +134,10 @@ class _DailyServicesScreenState extends State<DailyServicesScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Tuition aur doodh'),
+        title: const Text('Tuition & Milk'),
         actions: <Widget>[
           IconButton(
-            tooltip: 'Tuition aur doodh settings',
+            tooltip: 'Tuition & Milk settings',
             onPressed: _editSettings,
             icon: const Icon(Icons.settings_outlined),
           ),
@@ -147,7 +147,7 @@ class _DailyServicesScreenState extends State<DailyServicesScreen> {
         child: AppContent(
           maxWidth: 820,
           child: _loading
-              ? const AppLoadingView(label: 'Tuition aur doodh load ho raha hai...')
+              ? const AppLoadingView(label: 'Tuition & Milk load ho raha hai...')
               : _error != null
               ? AppStatusView(
                   icon: Icons.cloud_off_outlined,
@@ -166,7 +166,7 @@ class _DailyServicesScreenState extends State<DailyServicesScreen> {
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: <Widget>[
                             const AppSectionHeader(
-                              title: 'Tuition aur doodh set karo',
+                              title: 'Tuition & Milk set karo',
                               subtitle:
                                   'Pehle tuition fee, doodh ka rate aur roz ki '
                                   'default quantity bharo.',

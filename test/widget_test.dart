@@ -1113,7 +1113,10 @@ void main() {
 
     expect(find.text('Purane record'), findsOneWidget);
     expect(find.text('Recurring kharch'), findsOneWidget);
-    expect(find.text('Tuition aur doodh'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey<String>('drawer-daily-services')),
+      findsOneWidget,
+    );
     expect(find.text('Payment log'), findsOneWidget);
     expect(find.text('Manage'), findsNothing);
 
@@ -1124,6 +1127,42 @@ void main() {
 
     expect(find.text('Purane record'), findsOneWidget);
     expect(find.text('Koi saved record nahi'), findsOneWidget);
+    await auth.dispose();
+  });
+
+  testWidgets('home tuition and milk panel opens the daily services page', (
+    tester,
+  ) async {
+    final auth = MemoryAuthService(
+      initialUser: const AuthUser(id: 'u1', displayName: 'Dhiraj'),
+    );
+    await pumpApp(
+      tester,
+      auth: auth,
+      repository: MemoryLedgerRepository(
+        initialDailyServiceSettings: const DailyServiceSettings(
+          monthlyTuitionFee: 3000,
+          milkRatePerKg: 60,
+          defaultMilkQuantityKg: 1.5,
+        ),
+      ),
+    );
+
+    final panel = find.byKey(const ValueKey<String>('home-tuition-milk'));
+    await tester.scrollUntilVisible(
+      panel,
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(panel);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Tuition & Milk'), findsOneWidget);
+    expect(
+      find.text('Tuition & Milk ka data load nahi ho paya.'),
+      findsNothing,
+    );
     await auth.dispose();
   });
 
@@ -1881,10 +1920,10 @@ void main() {
     await tester.pumpAndSettle();
     await selectDailyServicesMonth(tester, 2026, 7);
 
-    await tester.tap(find.byTooltip('Tuition aur doodh settings'));
+    await tester.tap(find.byTooltip('Tuition & Milk settings'));
     await tester.pumpAndSettle();
 
     expect(find.textContaining('Purane mahine ka rate lock hai'), findsOneWidget);
-    expect(find.text('Tuition aur doodh settings'), findsNothing);
+    expect(find.text('Tuition & Milk settings'), findsNothing);
   });
 }

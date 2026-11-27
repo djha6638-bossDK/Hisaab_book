@@ -83,7 +83,7 @@ class HomeDrawer extends StatelessWidget {
             _DrawerItem(
               key: const ValueKey<String>('drawer-daily-services'),
               icon: Icons.fact_check_outlined,
-              label: 'Tuition aur doodh',
+              label: 'Tuition & Milk',
               subtitle: 'Daily attendance aur amount',
               onTap: onOpenDailyServices,
             ),

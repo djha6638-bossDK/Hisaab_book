@@ -273,7 +273,7 @@ class _HomeScreenState extends State<HomeScreen> {
       if (settings == null) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Pehle tuition aur doodh settings bharo.'),
+            content: Text('Pehle Tuition & Milk settings bharo.'),
           ),
         );
         return;
@@ -659,11 +659,15 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  void _openDrawerPage(Widget page) {
-    Navigator.of(context).pop();
+  void _pushPage(Widget page) {
     Navigator.of(context).push<void>(
       MaterialPageRoute<void>(builder: (_) => page),
     );
+  }
+
+  void _openDrawerPage(Widget page) {
+    Navigator.of(context).pop();
+    _pushPage(page);
   }
 
   void _openSavedRecords() {
@@ -679,8 +683,12 @@ class _HomeScreenState extends State<HomeScreen> {
     _openDrawerPage(RecurringExpensesScreen(repository: widget.repository));
   }
 
-  void _openDailyServices() {
+  void _openDailyServicesFromDrawer() {
     _openDrawerPage(DailyServicesScreen(repository: widget.repository));
+  }
+
+  void _openDailyServices() {
+    _pushPage(DailyServicesScreen(repository: widget.repository));
   }
 
   void _openPaymentPeople() {
@@ -816,7 +824,7 @@ class _HomeScreenState extends State<HomeScreen> {
         displayName: widget.user.displayName,
         onOpenSavedRecords: _openSavedRecords,
         onOpenRecurringExpenses: _openRecurringExpenses,
-        onOpenDailyServices: _openDailyServices,
+        onOpenDailyServices: _openDailyServicesFromDrawer,
         onOpenPaymentPeople: _openPaymentPeople,
       ),
       appBar: AppBar(
@@ -1025,6 +1033,70 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ),
                 const SizedBox(height: 16),
+                AppSurface(
+                  padding: EdgeInsets.zero,
+                  child: Material(
+                    type: MaterialType.transparency,
+                    child: InkWell(
+                      key: const ValueKey<String>('home-tuition-milk'),
+                      borderRadius: BorderRadius.circular(8),
+                      onTap: _openDailyServices,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 14,
+                        ),
+                        child: Row(
+                          children: <Widget>[
+                            Container(
+                              width: 40,
+                              height: 40,
+                              decoration: BoxDecoration(
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.primary.withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Icon(
+                                Icons.fact_check_outlined,
+                                color: Theme.of(context).colorScheme.primary,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: <Widget>[
+                                  Text(
+                                    'Tuition & Milk',
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .titleMedium
+                                        ?.copyWith(
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    'Daily attendance aur amount',
+                                    style: Theme.of(
+                                      context,
+                                    ).textTheme.bodySmall,
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const Icon(
+                              Icons.arrow_forward_ios_rounded,
+                              size: 16,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
                 if (_attendanceCheckError != null) ...<Widget>[
                   AppSurface(
                     color: const Color(0xfffff7ed),
@@ -1069,7 +1141,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                   ),
                                   const SizedBox(height: 3),
                                   Text(
-                                    'Tuition aur doodh ka hisaab aaj tak nahi '
+                                    'Tuition & Milk ka hisaab aaj tak nahi '
                                     'bhara. Abhi bhar do.',
                                     style: Theme.of(
                                       context,

@@ -130,7 +130,7 @@ class _DailyServiceSettingsScreenState
     final milkQuantity = parseIndianAmount(_milkQuantityController.text) ?? 0;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Tuition aur doodh settings')),
+      appBar: AppBar(title: const Text('Tuition & Milk settings')),
       bottomNavigationBar: Material(
         color: Theme.of(context).colorScheme.surface,
         elevation: 12,
