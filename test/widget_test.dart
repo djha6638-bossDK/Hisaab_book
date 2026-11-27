@@ -1096,6 +1096,37 @@ void main() {
     await auth.dispose();
   });
 
+  testWidgets('home drawer shows record shortcuts and opens saved records', (
+    tester,
+  ) async {
+    final auth = MemoryAuthService(
+      initialUser: const AuthUser(id: 'u1', displayName: 'Dhiraj'),
+    );
+    await pumpApp(
+      tester,
+      auth: auth,
+      repository: MemoryLedgerRepository(),
+    );
+
+    await tester.tap(find.byIcon(Icons.menu));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Purane record'), findsOneWidget);
+    expect(find.text('Recurring kharch'), findsOneWidget);
+    expect(find.text('Tuition aur doodh'), findsOneWidget);
+    expect(find.text('Payment log'), findsOneWidget);
+    expect(find.text('Manage'), findsNothing);
+
+    await tester.tap(
+      find.byKey(const ValueKey<String>('drawer-saved-records')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Purane record'), findsOneWidget);
+    expect(find.text('Koi saved record nahi'), findsOneWidget);
+    await auth.dispose();
+  });
+
   testWidgets(
     'home reminder settings enable a default reminder and turn blue',
     (tester) async {

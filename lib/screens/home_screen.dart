@@ -15,6 +15,7 @@ import '../services/daily_service_settings_resolver.dart';
 import '../services/pdf_report_service.dart';
 import '../widgets/app_shell.dart';
 import '../widgets/app_update_card.dart';
+import '../widgets/home_drawer.dart';
 import 'daily_attendance_screen.dart';
 import 'daily_services_screen.dart';
 import 'income_setup_dialog.dart';
@@ -658,6 +659,34 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  void _openDrawerPage(Widget page) {
+    Navigator.of(context).pop();
+    Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(builder: (_) => page),
+    );
+  }
+
+  void _openSavedRecords() {
+    _openDrawerPage(
+      SavedRecordsScreen(
+        repository: widget.repository,
+        pdfReportService: widget.pdfReportService,
+      ),
+    );
+  }
+
+  void _openRecurringExpenses() {
+    _openDrawerPage(RecurringExpensesScreen(repository: widget.repository));
+  }
+
+  void _openDailyServices() {
+    _openDrawerPage(DailyServicesScreen(repository: widget.repository));
+  }
+
+  void _openPaymentPeople() {
+    _openDrawerPage(PaymentPeopleScreen(repository: widget.repository));
+  }
+
   Future<void> _logout() async {
     if (_loggingOut) return;
     final confirmed = await showDialog<bool>(
@@ -783,6 +812,13 @@ class _HomeScreenState extends State<HomeScreen> {
     final years = availableYears();
     final reminderEnabled = _reminderTime != null;
     return Scaffold(
+      drawer: HomeDrawer(
+        displayName: widget.user.displayName,
+        onOpenSavedRecords: _openSavedRecords,
+        onOpenRecurringExpenses: _openRecurringExpenses,
+        onOpenDailyServices: _openDailyServices,
+        onOpenPaymentPeople: _openPaymentPeople,
+      ),
       appBar: AppBar(
         title: const Row(
           mainAxisSize: MainAxisSize.min,
@@ -984,103 +1020,6 @@ class _HomeScreenState extends State<HomeScreen> {
                               )
                             : const Icon(Icons.arrow_forward),
                         label: const Text('Mahina kholo'),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 16),
-                AppSurface(
-                  padding: const EdgeInsets.all(20),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: <Widget>[
-                      const AppSectionHeader(
-                        title: 'Manage',
-                        subtitle: 'Records, settings aur payment log.',
-                      ),
-                      const SizedBox(height: 16),
-                      LayoutBuilder(
-                        builder: (context, constraints) {
-                          final compact = constraints.maxWidth < 620;
-                          final savedButton = OutlinedButton.icon(
-                            onPressed: () => Navigator.of(context).push<void>(
-                              MaterialPageRoute<void>(
-                                builder: (_) => SavedRecordsScreen(
-                                  repository: widget.repository,
-                                  pdfReportService: widget.pdfReportService,
-                                ),
-                              ),
-                            ),
-                            icon: const Icon(Icons.folder_open_outlined),
-                            label: const Text('Purane record'),
-                          );
-                          final recurringButton = OutlinedButton.icon(
-                            onPressed: () => Navigator.of(context).push<void>(
-                              MaterialPageRoute<void>(
-                                builder: (_) => RecurringExpensesScreen(
-                                  repository: widget.repository,
-                                ),
-                              ),
-                            ),
-                            icon: const Icon(Icons.repeat),
-                            label: const Text('Recurring kharch'),
-                          );
-                          final dailyServicesButton = OutlinedButton.icon(
-                            onPressed: () => Navigator.of(context).push<void>(
-                              MaterialPageRoute<void>(
-                                builder: (_) => DailyServicesScreen(
-                                  repository: widget.repository,
-                                ),
-                              ),
-                            ),
-                            icon: const Icon(Icons.fact_check_outlined),
-                            label: const Text('Tuition aur doodh'),
-                          );
-                          final peopleButton = OutlinedButton.icon(
-                            onPressed: () => Navigator.of(context).push<void>(
-                              MaterialPageRoute<void>(
-                                builder: (_) => PaymentPeopleScreen(
-                                  repository: widget.repository,
-                                ),
-                              ),
-                            ),
-                            icon: const Icon(Icons.people_outline),
-                            label: const Text('Payment log'),
-                          );
-                          if (compact) {
-                            return Column(
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                              children: <Widget>[
-                                savedButton,
-                                const SizedBox(height: 10),
-                                recurringButton,
-                                const SizedBox(height: 10),
-                                dailyServicesButton,
-                                const SizedBox(height: 10),
-                                peopleButton,
-                              ],
-                            );
-                          }
-                          return Column(
-                            children: <Widget>[
-                              Row(
-                                children: <Widget>[
-                                  Expanded(child: savedButton),
-                                  const SizedBox(width: 12),
-                                  Expanded(child: recurringButton),
-                                ],
-                              ),
-                              const SizedBox(height: 10),
-                              Row(
-                                children: <Widget>[
-                                  Expanded(child: dailyServicesButton),
-                                  const SizedBox(width: 12),
-                                  Expanded(child: peopleButton),
-                                ],
-                              ),
-                            ],
-                          );
-                        },
                       ),
                     ],
                   ),
