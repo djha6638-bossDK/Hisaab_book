@@ -25,13 +25,16 @@ class _DailyServiceSettingsScreenState
     extends State<DailyServiceSettingsScreen> {
   static const List<DropdownMenuItem<int>>
   _weekdayItems = <DropdownMenuItem<int>>[
-    DropdownMenuItem<int>(value: DateTime.monday, child: Text('Somvar')),
-    DropdownMenuItem<int>(value: DateTime.tuesday, child: Text('Mangalvar')),
-    DropdownMenuItem<int>(value: DateTime.wednesday, child: Text('Budhvar')),
-    DropdownMenuItem<int>(value: DateTime.thursday, child: Text('Guruvar')),
-    DropdownMenuItem<int>(value: DateTime.friday, child: Text('Shukravar')),
-    DropdownMenuItem<int>(value: DateTime.saturday, child: Text('Shanivar')),
-    DropdownMenuItem<int>(value: DateTime.sunday, child: Text('Ravivar')),
+    DropdownMenuItem<int>(value: DateTime.monday, child: Text('Monday')),
+    DropdownMenuItem<int>(value: DateTime.tuesday, child: Text('Tuesday')),
+    DropdownMenuItem<int>(
+      value: DateTime.wednesday,
+      child: Text('Wednesday'),
+    ),
+    DropdownMenuItem<int>(value: DateTime.thursday, child: Text('Thursday')),
+    DropdownMenuItem<int>(value: DateTime.friday, child: Text('Friday')),
+    DropdownMenuItem<int>(value: DateTime.saturday, child: Text('Saturday')),
+    DropdownMenuItem<int>(value: DateTime.sunday, child: Text('Sunday')),
   ];
 
   late final TextEditingController _tuitionFeeController;

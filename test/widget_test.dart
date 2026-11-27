@@ -231,7 +231,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Shukravar'), findsOneWidget);
+    expect(find.text('Friday'), findsOneWidget);
     await tester.tap(find.text('Settings save karo'));
     await tester.pumpAndSettle();
 

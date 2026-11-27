@@ -747,13 +747,13 @@ class _DailyReport extends StatelessWidget {
   }
 
   String _weekdayName(int weekday) => const <String>[
-    'Somvar',
-    'Mangalvar',
-    'Budhvar',
-    'Guruvar',
-    'Shukravar',
-    'Shanivar',
-    'Ravivar',
+    'Monday',
+    'Tuesday',
+    'Wednesday',
+    'Thursday',
+    'Friday',
+    'Saturday',
+    'Sunday',
   ][weekday - 1];
 
   Future<void> _showRemarks(
